@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Camera, Search, FileDown, ShieldCheck, MapPin } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import { AgentTimmosReport } from '@/components/PdfReport';
+import { AgentTimmosReport } from '../components/PdfReport';
 
 export default function AgentTimmosApp() {
   const [city, setCity] = useState("");
