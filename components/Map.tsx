@@ -6,11 +6,12 @@ import {
   Marker,
   Popup,
   Circle,
+  Polygon,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-/* 🔧 FIX ICÔNES LEAFLET */
+/* FIX ICÔNES */
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 
 L.Icon.Default.mergeOptions({
@@ -31,53 +32,60 @@ type MarkerType = {
   avg?: number;
 };
 
+type ParcelleType = {
+  id: string;
+  surface: number;
+  coordinates: any;
+};
+
 type Props = {
   center?: [number, number];
   markers?: MarkerType[];
+  parcelles?: ParcelleType[];
 };
 
-/* 🎨 COULEUR SELON PRIX */
+/* COULEUR PRIX */
 function getColor(price: number, avg: number) {
   const ratio = price / avg;
 
-  if (ratio < 0.9) return "green";   // sous le marché
-  if (ratio < 1.1) return "orange";  // dans le marché
-  return "red";                      // au-dessus
+  if (ratio < 0.9) return "green";
+  if (ratio < 1.1) return "orange";
+  return "red";
+}
+
+/* CONVERSION GEOJSON → LEAFLET */
+function formatCoordinates(coords: any) {
+  return coords[0].map((c: any) => [c[1], c[0]]);
 }
 
 export default function Map({
   center = [48.606, 2.45],
   markers = [],
+  parcelles = [],
 }: Props) {
   return (
     <MapContainer
       center={center}
-      zoom={14}
+      zoom={16}
       style={{
-        height: "450px",
+        height: "500px",
         width: "100%",
         marginTop: "20px",
         borderRadius: "10px",
       }}
     >
-      {/* FOND DE CARTE */}
+      {/* FOND */}
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-      {/* 📍 BIEN PRINCIPAL */}
+      {/* BIEN */}
       <Marker position={center}>
-        <Popup>
-          <strong>Bien analysé</strong>
-        </Popup>
+        <Popup>Bien analysé</Popup>
       </Marker>
 
-      {/* 🔵 CERCLE DE RECHERCHE */}
-      <Circle
-        center={center}
-        radius={500}
-        pathOptions={{ color: "blue" }}
-      />
+      {/* RAYON */}
+      <Circle center={center} radius={300} pathOptions={{ color: "blue" }} />
 
-      {/* 📊 COMPARABLES DVF */}
+      {/* DVF */}
       {markers.map((m, i) => {
         const avg = m.avg || m.price;
         const color = getColor(m.price, avg);
@@ -86,7 +94,7 @@ export default function Map({
           <Circle
             key={i}
             center={[m.lat, m.lon]}
-            radius={25}
+            radius={20}
             pathOptions={{
               color,
               fillColor: color,
@@ -94,24 +102,35 @@ export default function Map({
             }}
           >
             <Popup>
-              <div>
-                <strong>{m.price.toLocaleString()} €</strong>
-                <br />
-                {m.surface && `${m.surface} m²`}
-                <br />
-                {m.surface &&
-                  `${Math.round(m.price / m.surface)} €/m²`}
-                <br />
-                <span style={{ color }}>
-                  {color === "green" && "Sous le marché 📉"}
-                  {color === "orange" && "Dans le marché ⚖️"}
-                  {color === "red" && "Au-dessus du marché 📈"}
-                </span>
-              </div>
+              <strong>{m.price.toLocaleString()} €</strong>
+              <br />
+              {m.surface} m²
+              <br />
+              {Math.round(m.price / (m.surface || 1))} €/m²
             </Popup>
           </Circle>
         );
       })}
+
+      {/* PARCELLES CADASTRALES */}
+      {parcelles.map((p, i) => (
+        <Polygon
+          key={i}
+          positions={formatCoordinates(p.coordinates)}
+          pathOptions={{
+            color: "purple",
+            fillOpacity: 0.2,
+          }}
+        >
+          <Popup>
+            <strong>Parcelle</strong>
+            <br />
+            ID : {p.id}
+            <br />
+            Surface : {p.surface} m²
+          </Popup>
+        </Polygon>
+      ))}
     </MapContainer>
   );
 }
