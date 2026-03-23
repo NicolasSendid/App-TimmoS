@@ -1,58 +1,99 @@
 "use client";
 
 import { useState } from "react";
-import axios from "axios";
+import { geocodeAddress } from "@/lib/geocode";
+import { getDVFNearby, DVFProperty } from "@/lib/dvf";
+import { analyseSecteur } from "@/lib/secteur";
+import { analyseMarche, Listing } from "@/lib/marche";
 
-export default function Estimation() {
+export default function EstimationPage() {
   const [address, setAddress] = useState("");
-  const [result, setResult] = useState<any>(null);
+  const [type, setType] = useState("appartement");
+  const [surface, setSurface] = useState(70);
+  const [result, setResult] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleEstimation = async () => {
+  // Fonction qui combine les trois piliers pour calculer le prix final
+  const calculEstimation = (dvf: number | null, secteur: number | null, marche: number | null) => {
+    const valeurs = [dvf ?? 0, secteur ?? 0, marche ?? 0];
+    const poids = [0.5, 0.3, 0.2];
+    const estimation = valeurs.reduce((acc, v, i) => acc + v * poids[i], 0);
+    return Math.round(estimation / 1000) * 1000; // arrondi au millier
+  };
+
+  const handleEstimate = async () => {
+    if (!address) {
+      alert("Veuillez saisir une adresse complète");
+      return;
+    }
+
+    setLoading(true);
     try {
-      // 1. Géocodage
-      const geo = await axios.get(
-        `https://api-adresse.data.gouv.fr/search/?q=${address}`
-      );
+      // 1️⃣ Géocodage de l’adresse
+      const { lat, lon } = await geocodeAddress(address);
 
-      const coords = geo.data.features[0].geometry.coordinates;
-      const lon = coords[0];
-      const lat = coords[1];
+      // 2️⃣ Comparables DVF autour du bien
+      const dvf: DVFProperty[] = await getDVFNearby(lat, lon, type);
 
-      // 2. Simulation DVF (à remplacer par vraie base plus tard)
-      const prixM2 = 3500;
+      // 3️⃣ Analyse secteur
+      const secteur = analyseSecteur(dvf, surface);
 
-      const estimation = prixM2 * 70; // base temporaire
+      // 4️⃣ Analyse marché actuel (exemple fictif)
+      const listings: Listing[] = [
+        { prix: 250000, surface: 70, date_pub: "2026-03-01" },
+        { prix: 270000, surface: 70, date_pub: "2026-03-10" },
+      ];
+      const marche = analyseMarche(listings, surface);
 
-      setResult({
-        lat,
-        lon,
-        estimation,
-      });
+      // 5️⃣ Calcul estimation finale
+      let dvfPrix: number | null = null;
+      if (dvf.length) {
+        dvfPrix = dvf.reduce((acc, p) => acc + p.prix, 0) / dvf.length; // moyenne DVF
+      }
+
+      const estimation = calculEstimation(dvfPrix, secteur, marche);
+
+      setResult(estimation);
 
     } catch (error) {
       console.error(error);
+      alert("Erreur lors de l'estimation. Vérifiez l'adresse et réessayez.");
     }
+    setLoading(false);
   };
 
   return (
-    <div>
-      <h1>Estimation par adresse</h1>
+    <div style={{ maxWidth: "600px", margin: "2rem auto", padding: "1rem", background: "#fff", borderRadius: "8px", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
+      <h1 style={{ textAlign: "center", marginBottom: "1rem" }}>Estimation intelligente</h1>
 
-      <input
-        placeholder="Adresse complète"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-      />
-
-      <button onClick={handleEstimation}>
-        Analyser le bien
-      </button>
+      <div style={{ marginBottom: "1rem" }}>
+        <input
+          type="text"
+          placeholder="Adresse complète"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}
+        />
+        <input
+          type="number"
+          placeholder="Surface m²"
+          value={surface}
+          onChange={(e) => setSurface(Number(e.target.value))}
+          style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}
+        />
+        <select value={type} onChange={(e) => setType(e.target.value)} style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}>
+          <option value="appartement">Appartement</option>
+          <option value="maison">Maison</option>
+        </select>
+        <button onClick={handleEstimate} style={{ width: "100%", padding: "0.75rem", background: "#4CAF50", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
+          {loading ? "Analyse en cours..." : "Estimer le bien"}
+        </button>
+      </div>
 
       {result && (
-        <div>
-          <p>Latitude : {result.lat}</p>
-          <p>Longitude : {result.lon}</p>
-          <h2>Estimation : {result.estimation} €</h2>
+        <div style={{ marginTop: "1.5rem", textAlign: "center", padding: "1rem", background: "#f0f0f0", borderRadius: "4px" }}>
+          <h2>Estimation : {result.toLocaleString()} €</h2>
+          <p>Basée sur DVF, secteur et marché actuel</p>
         </div>
       )}
     </div>
