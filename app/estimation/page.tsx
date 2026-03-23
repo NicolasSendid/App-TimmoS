@@ -47,9 +47,13 @@ export default function EstimationPage() {
 
       // 5️⃣ Calcul estimation finale
       let dvfPrix: number | null = null;
-      if (dvf.length) {
-        dvfPrix = dvf.reduce((acc, p) => acc + p.prix, 0) / dvf.length; // moyenne DVF
-      }
+
+if (dvf.length) {
+  const prixM2 = dvf.map(p => p.prix / p.surface);
+  const moyenneM2 = prixM2.reduce((a, b) => a + b, 0) / prixM2.length;
+
+  dvfPrix = moyenneM2 * surface;
+}
 
       const estimation = calculEstimation(dvfPrix, secteur, marche);
 
