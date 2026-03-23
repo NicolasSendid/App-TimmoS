@@ -1,14 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { fetchDVF } from "@/lib/dvf";
+import axios from "axios";
 
 export default function DVFPage() {
   const [data, setData] = useState<any[]>([]);
 
   const loadData = async () => {
-    const res = await fetchDVF(48.6, 2.45);
-    setData(res.slice(0, 10)); // limiter affichage
+    try {
+      const res = await axios.get(
+        "https://api-adresse.data.gouv.fr/search/?q=Corbeil"
+      );
+
+      setData(res.data.features.slice(0, 5));
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   return (
@@ -16,13 +23,12 @@ export default function DVFPage() {
       <h1>Transactions DVF</h1>
 
       <button onClick={loadData}>
-        Charger les ventes
+        Charger données
       </button>
 
       {data.map((item, i) => (
-        <div key={i} className="border p-2 my-2">
-          <p>Prix : {item.valeur_fonciere} €</p>
-          <p>Surface : {item.surface_reelle_bati} m²</p>
+        <div key={i} style={{ border: "1px solid #ccc", margin: 10, padding: 10 }}>
+          <p>{item.properties.label}</p>
         </div>
       ))}
     </div>
