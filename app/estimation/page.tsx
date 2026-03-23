@@ -1,79 +1,64 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { geocodeAddress } from "@/lib/geocode";
 import { getDVFNearby, DVFProperty } from "@/lib/dvf";
 import { analyseSecteur } from "@/lib/secteur";
 import { analyseMarche, Listing } from "@/lib/marche";
 
-/* -------------------- SCORING -------------------- */
-function scoring(
-  dvf: number | null,
-  secteur: number | null,
-  marche: number | null
-) {
+const Map = dynamic(() => import("@/components/Map"), {
+  ssr: false,
+});
+
+/* SCORING */
+function scoring(dvf: number | null, secteur: number | null, marche: number | null) {
   if (!dvf) return null;
 
   let score = 0;
-
-  if (secteur && dvf > secteur) score += 1;
-  if (marche && dvf > marche) score += 1;
+  if (secteur && dvf > secteur) score++;
+  if (marche && dvf > marche) score++;
 
   return score;
 }
 
-/* -------------------- PAGE -------------------- */
 export default function EstimationPage() {
   const [address, setAddress] = useState("");
-  const [type, setType] = useState("appartement");
   const [surface, setSurface] = useState(70);
+  const [type, setType] = useState("appartement");
 
   const [result, setResult] = useState<number | null>(null);
   const [score, setScore] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [markers, setMarkers] = useState<any[]>([]);
+  const [center, setCenter] = useState<[number, number] | null>(null);
 
-  /* -------------------- CALCUL FINAL -------------------- */
-  const calculEstimation = (
-    dvf: number | null,
-    secteur: number | null,
-    marche: number | null
-  ) => {
-    const valeurs = [dvf ?? 0, secteur ?? 0, marche ?? 0];
-    const poids = [0.5, 0.3, 0.2];
-
-    const estimation = valeurs.reduce((acc, v, i) => acc + v * poids[i], 0);
-
-    return Math.round(estimation / 1000) * 1000;
-  };
-
-  /* -------------------- ESTIMATION -------------------- */
   const handleEstimate = async () => {
-    if (!address) {
-      alert("Veuillez saisir une adresse");
-      return;
-    }
-
-    setLoading(true);
-
     try {
-      /* 1️⃣ Géocodage */
       const { lat, lon } = await geocodeAddress(address);
+      setCenter([lat, lon]);
 
-      /* 2️⃣ DVF */
       const dvf: DVFProperty[] = await getDVFNearby(lat, lon, type);
 
-      /* 3️⃣ Analyse secteur */
+      /* markers carte */
+      const mapMarkers = dvf.map((p) => ({
+        lat: p.lat,
+        lon: p.lon,
+        price: p.prix,
+        surface: p.surface,
+      }));
+      setMarkers(mapMarkers);
+
+      /* secteur */
       const secteur = analyseSecteur(dvf, surface);
 
-      /* 4️⃣ Marché actuel */
+      /* marché */
       const listings: Listing[] = [
         { prix: 250000, surface: 70, date_pub: "2026-03-01" },
         { prix: 270000, surface: 70, date_pub: "2026-03-10" },
       ];
-
       const marche = analyseMarche(listings, surface);
 
-      /* 5️⃣ Calcul DVF moyen */
+      /* DVF calcul */
       let dvfPrix: number | null = null;
 
       if (dvf.length) {
@@ -84,87 +69,58 @@ export default function EstimationPage() {
         dvfPrix = moyenneM2 * surface;
       }
 
-      /* 6️⃣ Estimation finale */
-      const estimation = calculEstimation(dvfPrix, secteur, marche);
+      /* estimation */
+      const estimation =
+        (dvfPrix ?? 0) * 0.5 +
+        (secteur ?? 0) * 0.3 +
+        (marche ?? 0) * 0.2;
 
-      /* 7️⃣ Score */
-      const s = scoring(dvfPrix, secteur, marche);
+      setResult(Math.round(estimation / 1000) * 1000);
+      setScore(scoring(dvfPrix, secteur, marche));
 
-      setResult(estimation);
-      setScore(s);
-
-    } catch (error) {
-      console.error(error);
+    } catch (e) {
       alert("Erreur lors de l'estimation");
     }
-
-    setLoading(false);
   };
 
-  /* -------------------- UI -------------------- */
   return (
-    <div style={{ maxWidth: "600px", margin: "2rem auto", padding: "1rem" }}>
-      <h1>Estimation immobilière intelligente</h1>
+    <div style={{ maxWidth: 700, margin: "auto" }}>
+      <h1>Estimation immobilière</h1>
 
       <input
-        type="text"
-        placeholder="Adresse complète"
+        placeholder="Adresse"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
-        style={{ width: "100%", marginBottom: "10px", padding: "8px" }}
       />
 
       <input
         type="number"
-        placeholder="Surface (m²)"
         value={surface}
         onChange={(e) => setSurface(Number(e.target.value))}
-        style={{ width: "100%", marginBottom: "10px", padding: "8px" }}
       />
 
-      <select
-        value={type}
-        onChange={(e) => setType(e.target.value)}
-        style={{ width: "100%", marginBottom: "10px", padding: "8px" }}
-      >
+      <select value={type} onChange={(e) => setType(e.target.value)}>
         <option value="appartement">Appartement</option>
         <option value="maison">Maison</option>
       </select>
 
-      <button
-        onClick={handleEstimate}
-        style={{
-          width: "100%",
-          padding: "10px",
-          background: "#4CAF50",
-          color: "#fff",
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        {loading ? "Analyse en cours..." : "Estimer le bien"}
-      </button>
+      <button onClick={handleEstimate}>Estimer</button>
 
-      {/* -------------------- RESULTATS -------------------- */}
       {result && (
-        <div style={{ marginTop: "20px", padding: "15px", background: "#f5f5f5" }}>
-          <h2>Estimation</h2>
-          <h3>{result.toLocaleString()} €</h3>
+        <>
+          <h2>{result.toLocaleString()} €</h2>
 
           <p>
-            {result > 300000
-              ? "Marché tendu 📈"
-              : "Marché favorable à l'achat 📉"}
-          </p>
-
-          {/* SCORE */}
-          <p>
-            Score de marché :{" "}
-            {score === 0 && "Opportunité d'achat 📉"}
+            {score === 0 && "Opportunité 📉"}
             {score === 1 && "Marché équilibré ⚖️"}
             {score === 2 && "Marché vendeur 📈"}
           </p>
-        </div>
+
+          {/* CARTE */}
+          {center && (
+            <Map center={center} markers={markers} />
+          )}
+        </>
       )}
     </div>
   );
