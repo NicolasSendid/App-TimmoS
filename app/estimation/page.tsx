@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { geocodeAddress } from "./lib/geocode";
-import { getDVFNearby, DVFProperty } from "./lib/dvf";
-import { getCitiesFromZip } from "./lib/geo";
-import { getCadastre } from "./lib/cadastre";
-import PropertyForm from "./components/PropertyForm";
-import { generatePDF } from "./lib/pdf";
+
+import { geocodeAddress } from "@/lib/geocode";
+import { getDVFNearby, DVFProperty } from "@/lib/dvf";
+import { getCitiesFromZip } from "@/lib/geo";
+import { getCadastre } from "@/lib/cadastre";
+import PropertyForm from "@/components/PropertyForm";
+import { generatePDF } from "@/lib/pdf";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
@@ -80,7 +81,6 @@ export default function EstimationPage() {
     <div style={{ maxWidth: 900, margin: "auto" }}>
       <h1>Estimation immobilière</h1>
 
-      {/* ADRESSE */}
       <input
         placeholder="Adresse"
         value={address}
@@ -100,7 +100,6 @@ export default function EstimationPage() {
         ))}
       </select>
 
-      {/* FORMULAIRE PRO */}
       <PropertyForm onSubmit={setProperty} />
 
       <button onClick={handleEstimate}>
