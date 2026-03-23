@@ -2,16 +2,24 @@ export interface DVFProperty {
   prix: number;
   surface: number;
   type_local: string;
-  date_mutation: string;
   lat: number;
   lon: number;
+  pieces: number;
 }
 
-export async function getDVFNearby(lat: number, lon: number, type: string): Promise<DVFProperty[]> {
-  // Simulation propre (évite crash)
-  return [
-    { prix: 250000, surface: 70, type_local: type, date_mutation: "2024-01-01", lat, lon },
-    { prix: 270000, surface: 75, type_local: type, date_mutation: "2023-12-01", lat, lon },
-    { prix: 260000, surface: 72, type_local: type, date_mutation: "2023-10-01", lat, lon }
-  ];
+export async function getDVFNearby(lat: number, lon: number, type: string) {
+  // Simulation réaliste autour du point
+  return Array.from({ length: 12 }).map(() => {
+    const surface = Math.floor(Math.random() * 60) + 40;
+    const prixM2 = 3000 + Math.random() * 1500;
+
+    return {
+      prix: Math.round(surface * prixM2),
+      surface,
+      type_local: type,
+      lat: lat + (Math.random() - 0.5) / 100,
+      lon: lon + (Math.random() - 0.5) / 100,
+      pieces: Math.floor(surface / 20),
+    };
+  });
 }
