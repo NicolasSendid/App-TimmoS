@@ -4,10 +4,10 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { geocodeAddress } from "@/lib/geocode";
 import { getDVFNearby, DVFProperty } from "@/lib/dvf";
-import { analyseSecteur, analyseSecteurDetail } from "@/lib/secteur";
-import { analyseMarche, Listing } from "@/lib/marche";
 import { getCitiesFromZip } from "@/lib/geo";
 import { getCadastre } from "@/lib/cadastre";
+import PropertyForm from "@/components/PropertyForm";
+import { generatePDF } from "@/lib/pdf";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
@@ -20,13 +20,15 @@ export default function EstimationPage() {
   const [cities, setCities] = useState<string[]>([]);
 
   const [surface, setSurface] = useState(70);
-  const [type, setType] = useState("appartement");
+  const [type, setType] = useState("Appartement");
 
   const [result, setResult] = useState<number | null>(null);
   const [markers, setMarkers] = useState<any[]>([]);
   const [center, setCenter] = useState<[number, number] | null>(null);
   const [parcelles, setParcelles] = useState<any[]>([]);
   const [selectedParcelle, setSelectedParcelle] = useState<any>(null);
+
+  const [property, setProperty] = useState<any>(null);
 
   const handleZipChange = async (value: string) => {
     setZip(value);
@@ -45,17 +47,15 @@ export default function EstimationPage() {
 
       const dvf: DVFProperty[] = await getDVFNearby(lat, lon, type);
 
-      let dvfPrix: number | null = null;
+      let dvfPrix = 0;
 
       if (dvf.length) {
-        const prixM2 = dvf.map((p) => p.prix / p.surface);
-        const moyenneM2 =
-          prixM2.reduce((a, b) => a + b, 0) / prixM2.length;
+        const prixM2 =
+          dvf.reduce((acc, p) => acc + p.prix / p.surface, 0) /
+          dvf.length;
 
-        dvfPrix = moyenneM2 * surface;
+        dvfPrix = prixM2 * surface;
       }
-
-      const moyenne = dvfPrix || 1;
 
       setMarkers(
         dvf.map((p) => ({
@@ -63,14 +63,13 @@ export default function EstimationPage() {
           lon: p.lon,
           price: p.prix,
           surface: p.surface,
-          avg: moyenne,
         }))
       );
 
       const cadastre = await getCadastre(lat, lon);
       setParcelles(cadastre);
 
-      setResult(Math.round(dvfPrix || 0));
+      setResult(Math.round(dvfPrix));
 
     } catch {
       alert("Erreur estimation");
@@ -78,9 +77,10 @@ export default function EstimationPage() {
   };
 
   return (
-    <div style={{ maxWidth: 700, margin: "auto" }}>
-      <h1>Estimation</h1>
+    <div style={{ maxWidth: 900, margin: "auto" }}>
+      <h1>Estimation immobilière</h1>
 
+      {/* ADRESSE */}
       <input
         placeholder="Adresse"
         value={address}
@@ -100,15 +100,33 @@ export default function EstimationPage() {
         ))}
       </select>
 
-      <input
-        type="number"
-        value={surface}
-        onChange={(e) => setSurface(Number(e.target.value))}
-      />
+      {/* FORMULAIRE PRO */}
+      <PropertyForm onSubmit={setProperty} />
 
-      <button onClick={handleEstimate}>Estimer</button>
+      <button onClick={handleEstimate}>
+        Lancer estimation
+      </button>
 
-      {result && <h2>{result.toLocaleString()} €</h2>}
+      {result && (
+        <>
+          <h2>{result.toLocaleString()} €</h2>
+
+          <button
+            onClick={() =>
+              generatePDF({
+                title: "Estimation",
+                price: result,
+                address: `${address}, ${zip} ${city}`,
+                surface,
+                type,
+                score: 2,
+              })
+            }
+          >
+            Générer PDF premium
+          </button>
+        </>
+      )}
 
       {center && (
         <Map
@@ -118,14 +136,6 @@ export default function EstimationPage() {
           selectedParcelle={selectedParcelle}
           onSelectParcelle={setSelectedParcelle}
         />
-      )}
-
-      {selectedParcelle && (
-        <div style={{ marginTop: 20 }}>
-          <h3>Parcelle sélectionnée</h3>
-          <p>ID : {selectedParcelle.id}</p>
-          <p>Surface : {selectedParcelle.surface} m²</p>
-        </div>
       )}
     </div>
   );
