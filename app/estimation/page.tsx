@@ -6,6 +6,8 @@ import { geocodeAddress } from "@/lib/geocode";
 import { getDVFNearby, DVFProperty } from "@/lib/dvf";
 import { analyseSecteur, analyseSecteurDetail } from "@/lib/secteur";
 import { analyseMarche, Listing } from "@/lib/marche";
+import { getCitiesFromZip } from "@/lib/geo";
+import { getCadastre } from "@/lib/cadastre";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
@@ -28,6 +30,10 @@ function scoring(
 
 export default function EstimationPage() {
   const [address, setAddress] = useState("");
+  const [zip, setZip] = useState("");
+  const [city, setCity] = useState("");
+  const [cities, setCities] = useState<string[]>([]);
+
   const [surface, setSurface] = useState(70);
   const [type, setType] = useState("appartement");
 
@@ -36,43 +42,36 @@ export default function EstimationPage() {
   const [markers, setMarkers] = useState<any[]>([]);
   const [center, setCenter] = useState<[number, number] | null>(null);
   const [secteurData, setSecteurData] = useState<any[]>([]);
+  const [parcelles, setParcelles] = useState<any[]>([]);
+
+  /* ZIP → villes */
+  const handleZipChange = async (value: string) => {
+    setZip(value);
+
+    if (value.length === 5) {
+      const result = await getCitiesFromZip(value);
+      setCities(result);
+    }
+  };
 
   const handleEstimate = async () => {
-    if (!address || surface <= 0) {
-      alert("Merci de renseigner une adresse et une surface valide");
+    if (!address || !zip || !city || surface <= 0) {
+      alert("Merci de remplir tous les champs");
       return;
     }
 
     try {
-      /* 1️⃣ Géocodage */
-      const { lat, lon } = await geocodeAddress(address);
+      /* 1️⃣ Adresse complète */
+      const fullAddress = `${address}, ${zip} ${city}`;
+
+      /* 2️⃣ Géocodage */
+      const { lat, lon } = await geocodeAddress(fullAddress);
       setCenter([lat, lon]);
 
-      /* 2️⃣ DVF */
+      /* 3️⃣ DVF */
       const dvf: DVFProperty[] = await getDVFNearby(lat, lon, type);
 
-      /* 3️⃣ Markers carte */
-      const mapMarkers = dvf.map((p) => ({
-        lat: p.lat,
-        lon: p.lon,
-        price: p.prix,
-        surface: p.surface,
-      }));
-      setMarkers(mapMarkers);
-
-      /* 4️⃣ Analyse secteur */
-      const secteur = analyseSecteur(dvf, surface);
-      const secteurDetail = analyseSecteurDetail(dvf);
-      setSecteurData(secteurDetail);
-
-      /* 5️⃣ Marché actuel */
-      const listings: Listing[] = [
-        { prix: 250000, surface: 70, date_pub: "2026-03-01" },
-        { prix: 270000, surface: 70, date_pub: "2026-03-10" },
-      ];
-      const marche = analyseMarche(listings, surface);
-
-      /* 6️⃣ DVF prix réel */
+      /* 4️⃣ Prix moyen */
       let dvfPrix: number | null = null;
 
       if (dvf.length) {
@@ -83,7 +82,33 @@ export default function EstimationPage() {
         dvfPrix = moyenneM2 * surface;
       }
 
-      /* 7️⃣ Estimation finale */
+      /* 5️⃣ Markers carte */
+      const moyenne = dvfPrix || 1;
+
+      const mapMarkers = dvf.map((p) => ({
+        lat: p.lat,
+        lon: p.lon,
+        price: p.prix,
+        surface: p.surface,
+        avg: moyenne,
+      }));
+
+      setMarkers(mapMarkers);
+
+      /* 6️⃣ Analyse secteur */
+      const secteur = analyseSecteur(dvf, surface);
+      const secteurDetail = analyseSecteurDetail(dvf);
+      setSecteurData(secteurDetail);
+
+      /* 7️⃣ Marché */
+      const listings: Listing[] = [
+        { prix: 250000, surface: 70, date_pub: "2026-03-01" },
+        { prix: 270000, surface: 70, date_pub: "2026-03-10" },
+      ];
+
+      const marche = analyseMarche(listings, surface);
+
+      /* 8️⃣ Estimation */
       const estimation =
         (dvfPrix ?? 0) * 0.5 +
         (secteur ?? 0) * 0.3 +
@@ -91,8 +116,12 @@ export default function EstimationPage() {
 
       setResult(Math.round(estimation / 1000) * 1000);
 
-      /* 8️⃣ Score */
+      /* 9️⃣ Score */
       setScore(scoring(dvfPrix, secteur, marche));
+
+      /* 🔟 Cadastre */
+      const parcellesData = await getCadastre(lat, lon);
+      setParcelles(parcellesData);
 
     } catch (e) {
       console.error(e);
@@ -107,43 +136,39 @@ export default function EstimationPage() {
       {/* FORMULAIRE */}
       <div style={{ marginBottom: "20px" }}>
         <input
-          placeholder="Adresse complète"
+          placeholder="Adresse (ex: 10 rue Victor Hugo)"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
         />
 
         <input
-          type="number"
-          placeholder="Surface (m²)"
-          value={surface}
-          onChange={(e) => setSurface(Number(e.target.value))}
-          style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
+          placeholder="Code postal"
+          value={zip}
+          onChange={(e) => handleZipChange(e.target.value)}
         />
 
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-        >
+        <select value={city} onChange={(e) => setCity(e.target.value)}>
+          <option value="">Choisir une ville</option>
+          {cities.map((c, i) => (
+            <option key={i} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+
+        <input
+          type="number"
+          placeholder="Surface"
+          value={surface}
+          onChange={(e) => setSurface(Number(e.target.value))}
+        />
+
+        <select value={type} onChange={(e) => setType(e.target.value)}>
           <option value="appartement">Appartement</option>
           <option value="maison">Maison</option>
         </select>
 
-        <button
-          onClick={handleEstimate}
-          style={{
-            width: "100%",
-            padding: "12px",
-            background: "#2ecc71",
-            color: "#fff",
-            border: "none",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
-          Estimer le bien
-        </button>
+        <button onClick={handleEstimate}>Estimer</button>
       </div>
 
       {/* RESULTAT */}
@@ -159,25 +184,30 @@ export default function EstimationPage() {
 
           {/* ANALYSE SECTEUR */}
           {secteurData.length > 0 && (
-            <div style={{ marginTop: "20px" }}>
+            <div>
               <h3>Analyse du secteur</h3>
-
               {secteurData.map((s, i) => (
                 <div key={i}>
-                  <strong>{s.type}</strong> : {s.percentage}% —{" "}
-                  {s.avgSurface} m² moyen
+                  {s.type} : {s.percentage}% — {s.avgSurface} m²
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* CADASTRE */}
+          {parcelles.length > 0 && (
+            <div>
+              <h3>Parcelles cadastrales</h3>
+              {parcelles.map((p, i) => (
+                <div key={i}>
+                  {p.id} — {p.surface} m²
                 </div>
               ))}
             </div>
           )}
 
           {/* CARTE */}
-          {center && (
-            <>
-              <h3>Biens vendus autour</h3>
-              <Map center={center} markers={markers} />
-            </>
-          )}
+          {center && <Map center={center} markers={markers} />}
         </>
       )}
     </div>
