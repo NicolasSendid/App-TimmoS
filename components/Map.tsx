@@ -42,9 +42,11 @@ type Props = {
   center?: [number, number];
   markers?: MarkerType[];
   parcelles?: ParcelleType[];
+  selectedParcelle?: ParcelleType | null;
+  onSelectParcelle?: (p: ParcelleType) => void;
 };
 
-/* COULEUR PRIX */
+/* COULEUR MARCHÉ */
 function getColor(price: number, avg: number) {
   const ratio = price / avg;
 
@@ -53,7 +55,7 @@ function getColor(price: number, avg: number) {
   return "red";
 }
 
-/* CONVERSION GEOJSON → LEAFLET */
+/* FORMAT GEOJSON */
 function formatCoordinates(coords: any) {
   return coords[0].map((c: any) => [c[1], c[0]]);
 }
@@ -62,6 +64,8 @@ export default function Map({
   center = [48.606, 2.45],
   markers = [],
   parcelles = [],
+  selectedParcelle,
+  onSelectParcelle,
 }: Props) {
   return (
     <MapContainer
@@ -74,7 +78,6 @@ export default function Map({
         borderRadius: "10px",
       }}
     >
-      {/* FOND */}
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
       {/* BIEN */}
@@ -82,7 +85,7 @@ export default function Map({
         <Popup>Bien analysé</Popup>
       </Marker>
 
-      {/* RAYON */}
+      {/* ZONE */}
       <Circle center={center} radius={300} pathOptions={{ color: "blue" }} />
 
       {/* DVF */}
@@ -105,32 +108,41 @@ export default function Map({
               <strong>{m.price.toLocaleString()} €</strong>
               <br />
               {m.surface} m²
-              <br />
-              {Math.round(m.price / (m.surface || 1))} €/m²
             </Popup>
           </Circle>
         );
       })}
 
-      {/* PARCELLES CADASTRALES */}
-      {parcelles.map((p, i) => (
-        <Polygon
-          key={i}
-          positions={formatCoordinates(p.coordinates)}
-          pathOptions={{
-            color: "purple",
-            fillOpacity: 0.2,
-          }}
-        >
-          <Popup>
-            <strong>Parcelle</strong>
-            <br />
-            ID : {p.id}
-            <br />
-            Surface : {p.surface} m²
-          </Popup>
-        </Polygon>
-      ))}
+      {/* PARCELLES */}
+      {parcelles.map((p, i) => {
+        const isSelected = selectedParcelle?.id === p.id;
+
+        return (
+          <Polygon
+            key={i}
+            positions={formatCoordinates(p.coordinates)}
+            pathOptions={{
+              color: isSelected ? "gold" : "purple",
+              fillColor: isSelected ? "gold" : "purple",
+              fillOpacity: isSelected ? 0.5 : 0.2,
+              weight: isSelected ? 3 : 1,
+            }}
+            eventHandlers={{
+              click: () => onSelectParcelle && onSelectParcelle(p),
+            }}
+          >
+            <Popup>
+              <strong>Parcelle</strong>
+              <br />
+              ID : {p.id}
+              <br />
+              Surface : {p.surface} m²
+              <br />
+              {isSelected && "Sélectionnée ✅"}
+            </Popup>
+          </Polygon>
+        );
+      })}
     </MapContainer>
   );
 }
