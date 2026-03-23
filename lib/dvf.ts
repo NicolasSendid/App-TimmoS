@@ -1,6 +1,3 @@
-// lib/dvf.ts
-import axios from "axios";
-
 export interface DVFProperty {
   prix: number;
   surface: number;
@@ -10,8 +7,11 @@ export interface DVFProperty {
   lon: number;
 }
 
-export async function getDVFNearby(lat: number, lon: number, type: string, radius: number = 500): Promise<DVFProperty[]> {
-  // Remplacer par API DVF filtrée réelle
-  const res = await axios.get(`https://api-dvf.example.com/nearby?lat=${lat}&lon=${lon}&type=${type}&radius=${radius}`);
-  return res.data.properties;
+export async function getDVFNearby(lat: number, lon: number, type: string): Promise<DVFProperty[]> {
+  // Simulation propre (évite crash)
+  return [
+    { prix: 250000, surface: 70, type_local: type, date_mutation: "2024-01-01", lat, lon },
+    { prix: 270000, surface: 75, type_local: type, date_mutation: "2023-12-01", lat, lon },
+    { prix: 260000, surface: 72, type_local: type, date_mutation: "2023-10-01", lat, lon }
+  ];
 }
