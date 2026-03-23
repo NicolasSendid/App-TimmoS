@@ -5,8 +5,11 @@ export async function getCadastre(lat: number, lon: number) {
 
   const data = await res.json();
 
-  return data.features?.map((f: any) => ({
-    id: f.properties.idu,
-    surface: f.properties.contenance,
-  })) || [];
+  return (
+    data.features?.map((f: any) => ({
+      id: f.properties.idu,
+      surface: f.properties.contenance,
+      coordinates: f.geometry.coordinates,
+    })) || []
+  );
 }
