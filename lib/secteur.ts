@@ -1,10 +1,29 @@
 import { DVFProperty } from "./dvf";
 
-export function analyseSecteur(dvfList: DVFProperty[], surface: number) {
+export function analyseSecteurDetail(dvfList: DVFProperty[]) {
   if (!dvfList.length) return null;
 
-  const prixM2 = dvfList.map(p => p.prix / p.surface);
-  const moyenne = prixM2.reduce((a, b) => a + b, 0) / prixM2.length;
+  const types: any = {};
 
-  return moyenne * surface;
+  dvfList.forEach((b) => {
+    const key = b.pieces >= 7 ? "T7+" : `T${b.pieces}`;
+
+    if (!types[key]) {
+      types[key] = {
+        count: 0,
+        totalSurface: 0,
+      };
+    }
+
+    types[key].count++;
+    types[key].totalSurface += b.surface;
+  });
+
+  const total = dvfList.length;
+
+  return Object.entries(types).map(([type, data]: any) => ({
+    type,
+    percentage: Math.round((data.count / total) * 100),
+    avgSurface: Math.round(data.totalSurface / data.count),
+  }));
 }
