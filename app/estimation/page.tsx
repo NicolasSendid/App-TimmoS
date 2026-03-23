@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useState } from "react";
 import { geocodeAddress } from "@/lib/geocode";
 import { getDVFNearby, DVFProperty } from "@/lib/dvf";
