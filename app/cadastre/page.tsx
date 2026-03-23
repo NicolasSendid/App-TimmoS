@@ -9,9 +9,9 @@ const Map = dynamic(() => import("@/components/Map"), {
 export default function CadastrePage() {
   return (
     <div>
-      <h1>Cadastre</h1>
+      <h1>Carte cadastrale</h1>
 
-      <Map center={[48.606, 2.45]} />
+      <Map />
     </div>
   );
 }
