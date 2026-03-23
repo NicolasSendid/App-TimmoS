@@ -5,14 +5,14 @@ import {
   TileLayer,
   Marker,
   Popup,
-  Circle,
+  Circle as LeafletCircle,
   Polygon,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { ReactNode } from "react";
 
-/* FIX ICONES LEAFLET */
+/* FIX ICONES */
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 
 L.Icon.Default.mergeOptions({
@@ -46,6 +46,7 @@ type Props = {
   onSelectParcelle?: (p: ParcelleType) => void;
 };
 
+/* COORD PARCELLE */
 function formatCoordinates(coords: any) {
   return coords[0].map((c: any) => [c[1], c[0]]);
 }
@@ -57,7 +58,7 @@ export default function Map({
   selectedParcelle,
   onSelectParcelle,
 }: Props) {
-  const mapChildren: ReactNode = (
+  const children: ReactNode = (
     <>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
@@ -65,10 +66,11 @@ export default function Map({
         <Popup>Bien analysé</Popup>
       </Marker>
 
-      <Circle center={center} radius={300} pathOptions={{ color: "blue" }} />
+      {/* ⚠️ FIX ICI : on utilise LeafletCircle typé correctement */}
+      <LeafletCircle center={center} radius={300} pathOptions={{ color: "blue" }} />
 
       {markers.map((m, i) => (
-        <Circle
+        <LeafletCircle
           key={i}
           center={[m.lat, m.lon]}
           radius={20}
@@ -83,7 +85,7 @@ export default function Map({
             <br />
             {m.surface} m²
           </Popup>
-        </Circle>
+        </LeafletCircle>
       ))}
 
       {parcelles.map((p, i) => {
@@ -126,7 +128,7 @@ export default function Map({
         borderRadius: "10px",
       }}
     >
-      {mapChildren}
+      {children}
     </MapContainer>
   );
 }
