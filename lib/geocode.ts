@@ -1,9 +1,11 @@
+// lib/geocode.ts
 import axios from "axios";
 
 export async function geocodeAddress(address: string) {
   const res = await axios.get(
-    `https://api-adresse.data.gouv.fr/search/?q=${address}`
+    `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(address)}`
   );
-
-  return res.data.features[0].geometry.coordinates;
+  if (!res.data.features.length) throw new Error("Adresse introuvable");
+  const [lon, lat] = res.data.features[0].geometry.coordinates;
+  return { lat, lon };
 }
