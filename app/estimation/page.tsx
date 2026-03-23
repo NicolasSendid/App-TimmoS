@@ -5,11 +5,14 @@ import { useState } from "react";
 export default function Estimation() {
   const [surface, setSurface] = useState("");
   const [pieces, setPieces] = useState("");
+  const [type, setType] = useState("appartement");
   const [result, setResult] = useState<number | null>(null);
 
   const handleEstimation = () => {
-    // Simulation simple (remplacé plus tard par DVF)
-    const prixM2 = 3500;
+    let prixM2 = 3500;
+
+    if (type === "maison") prixM2 = 3200;
+
     const estimation = Number(surface) * prixM2;
 
     setResult(estimation);
@@ -17,7 +20,12 @@ export default function Estimation() {
 
   return (
     <div>
-      <h1>Estimation</h1>
+      <h1>Estimation du bien</h1>
+
+      <select onChange={(e) => setType(e.target.value)}>
+        <option value="appartement">Appartement</option>
+        <option value="maison">Maison</option>
+      </select>
 
       <input
         placeholder="Surface (m²)"
@@ -32,11 +40,14 @@ export default function Estimation() {
       />
 
       <button onClick={handleEstimation}>
-        Estimer
+        Lancer estimation
       </button>
 
       {result && (
-        <h2>Estimation : {result} €</h2>
+        <div>
+          <h2>Résultat :</h2>
+          <p>{result.toLocaleString()} €</p>
+        </div>
       )}
     </div>
   );
