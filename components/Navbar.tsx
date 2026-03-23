@@ -4,7 +4,13 @@ import Link from "next/link";
 
 export default function Navbar() {
   return (
-    <nav className="flex gap-4 p-4 bg-black text-white">
+    <nav style={{
+      display: "flex",
+      gap: "15px",
+      padding: "15px",
+      background: "#0f172a",
+      color: "white"
+    }}>
       <Link href="/">Accueil</Link>
       <Link href="/estimation">Estimation</Link>
       <Link href="/dvf">DVF</Link>
