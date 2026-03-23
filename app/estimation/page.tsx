@@ -13,16 +13,6 @@ const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
 });
 
-function scoring(dvf: number | null, secteur: number | null, marche: number | null) {
-  if (!dvf) return null;
-
-  let score = 0;
-  if (secteur && dvf > secteur) score++;
-  if (marche && dvf > marche) score++;
-
-  return score;
-}
-
 export default function EstimationPage() {
   const [address, setAddress] = useState("");
   const [zip, setZip] = useState("");
@@ -33,11 +23,10 @@ export default function EstimationPage() {
   const [type, setType] = useState("appartement");
 
   const [result, setResult] = useState<number | null>(null);
-  const [score, setScore] = useState<number | null>(null);
   const [markers, setMarkers] = useState<any[]>([]);
   const [center, setCenter] = useState<[number, number] | null>(null);
-  const [secteurData, setSecteurData] = useState<any[]>([]);
   const [parcelles, setParcelles] = useState<any[]>([]);
+  const [selectedParcelle, setSelectedParcelle] = useState<any>(null);
 
   const handleZipChange = async (value: string) => {
     setZip(value);
@@ -78,38 +67,31 @@ export default function EstimationPage() {
         }))
       );
 
-      const secteur = analyseSecteur(dvf, surface);
-      setSecteurData(analyseSecteurDetail(dvf));
-
-      const listings: Listing[] = [
-        { prix: 250000, surface: 70, date_pub: "2026-03-01" },
-      ];
-
-      const marche = analyseMarche(listings, surface);
-
-      const estimation =
-        (dvfPrix ?? 0) * 0.5 +
-        (secteur ?? 0) * 0.3 +
-        (marche ?? 0) * 0.2;
-
-      setResult(Math.round(estimation / 1000) * 1000);
-      setScore(scoring(dvfPrix, secteur, marche));
-
-      /* CADASTRE */
       const cadastre = await getCadastre(lat, lon);
       setParcelles(cadastre);
 
-    } catch (e) {
+      setResult(Math.round(dvfPrix || 0));
+
+    } catch {
       alert("Erreur estimation");
     }
   };
 
   return (
     <div style={{ maxWidth: 700, margin: "auto" }}>
-      <h1>Estimation immobilière</h1>
+      <h1>Estimation</h1>
 
-      <input placeholder="Adresse" value={address} onChange={(e) => setAddress(e.target.value)} />
-      <input placeholder="Code postal" value={zip} onChange={(e) => handleZipChange(e.target.value)} />
+      <input
+        placeholder="Adresse"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+      />
+
+      <input
+        placeholder="Code postal"
+        value={zip}
+        onChange={(e) => handleZipChange(e.target.value)}
+      />
 
       <select value={city} onChange={(e) => setCity(e.target.value)}>
         <option>Ville</option>
@@ -118,16 +100,32 @@ export default function EstimationPage() {
         ))}
       </select>
 
-      <input type="number" value={surface} onChange={(e) => setSurface(Number(e.target.value))} />
+      <input
+        type="number"
+        value={surface}
+        onChange={(e) => setSurface(Number(e.target.value))}
+      />
 
       <button onClick={handleEstimate}>Estimer</button>
 
-      {result && (
-        <>
-          <h2>{result.toLocaleString()} €</h2>
+      {result && <h2>{result.toLocaleString()} €</h2>}
 
-          <Map center={center!} markers={markers} parcelles={parcelles} />
-        </>
+      {center && (
+        <Map
+          center={center}
+          markers={markers}
+          parcelles={parcelles}
+          selectedParcelle={selectedParcelle}
+          onSelectParcelle={setSelectedParcelle}
+        />
+      )}
+
+      {selectedParcelle && (
+        <div style={{ marginTop: 20 }}>
+          <h3>Parcelle sélectionnée</h3>
+          <p>ID : {selectedParcelle.id}</p>
+          <p>Surface : {selectedParcelle.surface} m²</p>
+        </div>
       )}
     </div>
   );
