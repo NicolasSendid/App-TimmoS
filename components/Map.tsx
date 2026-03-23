@@ -10,7 +10,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { MapContainerProps } from "react-leaflet";
+import { ReactNode } from "react";
 
 /* FIX ICONES LEAFLET */
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -46,7 +46,6 @@ type Props = {
   onSelectParcelle?: (p: ParcelleType) => void;
 };
 
-/* FORMAT GEOJSON */
 function formatCoordinates(coords: any) {
   return coords[0].map((c: any) => [c[1], c[0]]);
 }
@@ -58,31 +57,16 @@ export default function Map({
   selectedParcelle,
   onSelectParcelle,
 }: Props) {
-  return (
-    <MapContainer
-      {...({
-        center,
-        zoom: 16,
-        style: {
-          height: "500px",
-          width: "100%",
-          marginTop: "20px",
-          borderRadius: "10px",
-        },
-      } as MapContainerProps)}
-    >
-      {/* CARTE */}
+  const mapChildren: ReactNode = (
+    <>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-      {/* BIEN */}
       <Marker position={center}>
         <Popup>Bien analysé</Popup>
       </Marker>
 
-      {/* RAYON */}
       <Circle center={center} radius={300} pathOptions={{ color: "blue" }} />
 
-      {/* COMPARABLES */}
       {markers.map((m, i) => (
         <Circle
           key={i}
@@ -102,7 +86,6 @@ export default function Map({
         </Circle>
       ))}
 
-      {/* PARCELLES */}
       {parcelles.map((p, i) => {
         const isSelected = selectedParcelle?.id === p.id;
 
@@ -129,6 +112,21 @@ export default function Map({
           </Polygon>
         );
       })}
+    </>
+  );
+
+  return (
+    <MapContainer
+      center={center}
+      zoom={16}
+      style={{
+        height: "500px",
+        width: "100%",
+        marginTop: "20px",
+        borderRadius: "10px",
+      }}
+    >
+      {mapChildren}
     </MapContainer>
   );
 }
