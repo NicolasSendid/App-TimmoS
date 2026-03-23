@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Circle as LeafletCircle,
-  Polygon,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
