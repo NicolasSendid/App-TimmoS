@@ -10,7 +10,6 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { ReactNode } from "react";
 
 /* FIX ICONES */
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -57,21 +56,27 @@ export default function Map({
   selectedParcelle,
   onSelectParcelle,
 }: Props) {
-  const children: ReactNode = (
-    <>
+  return (
+    <MapContainer
+      // 🔥 FIX CRUCIAL : on force le typage localement
+      {...({
+        center,
+        zoom: 16,
+        style: {
+          height: "500px",
+          width: "100%",
+          marginTop: "20px",
+          borderRadius: "10px",
+        },
+      } as any)}
+    >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
       <Marker position={center}>
         <Popup>Bien analysé</Popup>
       </Marker>
 
-      {/* ⚠️ FIX IMPORTANT : cast local pour contourner TS */}
-      <Circle
-        center={center}
-        radius={300}
-        pathOptions={{ color: "blue" }}
-        {...({} as any)}
-      />
+      <Circle center={center} radius={300} pathOptions={{ color: "blue" }} />
 
       {markers.map((m, i) => (
         <Circle
@@ -83,7 +88,6 @@ export default function Map({
             fillColor: "orange",
             fillOpacity: 0.5,
           }}
-          {...({} as any)}
         >
           <Popup>
             <strong>{m.price.toLocaleString()} €</strong>
@@ -119,21 +123,6 @@ export default function Map({
           </Polygon>
         );
       })}
-    </>
-  );
-
-  return (
-    <MapContainer
-      center={center}
-      zoom={16}
-      style={{
-        height: "500px",
-        width: "100%",
-        marginTop: "20px",
-        borderRadius: "10px",
-      }}
-    >
-      {children}
     </MapContainer>
   );
 }
