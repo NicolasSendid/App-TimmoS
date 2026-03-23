@@ -5,7 +5,7 @@ import {
   TileLayer,
   Marker,
   Popup,
-  Circle,
+  Circle as LeafletCircle,
   Polygon,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -58,17 +58,14 @@ export default function Map({
 }: Props) {
   return (
     <MapContainer
-      // 🔥 FIX CRUCIAL : on force le typage localement
-      {...({
-        center,
-        zoom: 16,
-        style: {
-          height: "500px",
-          width: "100%",
-          marginTop: "20px",
-          borderRadius: "10px",
-        },
-      } as any)}
+      center={center}
+      zoom={16}
+      style={{
+        height: "500px",
+        width: "100%",
+        marginTop: "20px",
+        borderRadius: "10px",
+      }}
     >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
@@ -76,25 +73,34 @@ export default function Map({
         <Popup>Bien analysé</Popup>
       </Marker>
 
-      <Circle center={center} radius={300} pathOptions={{ color: "blue" }} />
+      {/* 🔥 FIX ICI : on force le typage du Circle */}
+      <LeafletCircle
+        {...({
+          center,
+          radius: 300,
+          pathOptions: { color: "blue" },
+        } as any)}
+      />
 
       {markers.map((m, i) => (
-        <Circle
+        <LeafletCircle
           key={i}
-          center={[m.lat, m.lon]}
-          radius={20}
-          pathOptions={{
-            color: "orange",
-            fillColor: "orange",
-            fillOpacity: 0.5,
-          }}
+          {...({
+            center: [m.lat, m.lon],
+            radius: 20,
+            pathOptions: {
+              color: "orange",
+              fillColor: "orange",
+              fillOpacity: 0.5,
+            },
+          } as any)}
         >
           <Popup>
             <strong>{m.price.toLocaleString()} €</strong>
             <br />
             {m.surface} m²
           </Popup>
-        </Circle>
+        </LeafletCircle>
       ))}
 
       {parcelles.map((p, i) => {
