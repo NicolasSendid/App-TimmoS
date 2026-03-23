@@ -1,8 +1,17 @@
+// lib/dvf.ts
 import axios from "axios";
 
-export async function fetchDVF(lat: number, lon: number) {
-  const url = `https://api.data.gouv.fr/dvf?lat=${lat}&lon=${lon}`;
+export interface DVFProperty {
+  prix: number;
+  surface: number;
+  type_local: string;
+  date_mutation: string;
+  lat: number;
+  lon: number;
+}
 
-  const res = await axios.get(url);
-  return res.data;
+export async function getDVFNearby(lat: number, lon: number, type: string, radius: number = 500): Promise<DVFProperty[]> {
+  // Remplacer par API DVF filtrée réelle
+  const res = await axios.get(`https://api-dvf.example.com/nearby?lat=${lat}&lon=${lon}&type=${type}&radius=${radius}`);
+  return res.data.properties;
 }
