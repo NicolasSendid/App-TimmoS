@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { geocodeAddress } from "@/lib/geocode";
-import { getDVFNearby, DVFProperty } from "@/lib/dvf";
-import { getCitiesFromZip } from "@/lib/geo";
-import { getCadastre } from "@/lib/cadastre";
-import PropertyForm from "@/components/PropertyForm";
-import { generatePDF } from "@/lib/pdf";
+import { geocodeAddress } from "./lib/geocode";
+import { getDVFNearby, DVFProperty } from "./lib/dvf";
+import { getCitiesFromZip } from "./lib/geo";
+import { getCadastre } from "./lib/cadastre";
+import PropertyForm from "./components/PropertyForm";
+import { generatePDF } from "./lib/pdf";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
