@@ -1,47 +1,47 @@
-import axios from "axios";
-
-export type DVFProperty = {
-  lat: number;
-  lon: number;
-  prix: number;
+type DVFProperty = {
   surface: number;
-  type: string;
-  date: string;
 };
 
-export async function getDVFNearby(
-  lat: number,
-  lon: number,
-  typeBien: string
-): Promise<DVFProperty[]> {
-  try {
-    const url = `https://api-adresse.data.gouv.fr/reverse/?lon=${lon}&lat=${lat}`;
+function estimatePieces(surface: number): number {
+  if (surface < 30) return 1;
+  if (surface < 45) return 2;
+  if (surface < 65) return 3;
+  if (surface < 85) return 4;
+  if (surface < 110) return 5;
+  if (surface < 140) return 6;
+  return 7;
+}
 
-    const geo = await axios.get(url);
-    const city = geo.data.features[0]?.properties?.city;
+export function analyseSecteur(dvfList: DVFProperty[]) {
+  const types: any = {};
 
-    if (!city) return [];
+  dvfList.forEach((bien) => {
+    const pieces = estimatePieces(bien.surface);
+    const key = pieces >= 7 ? "T7+" : `T${pieces}`;
 
-    const dvfUrl = `https://public.opendatasoft.com/api/records/1.0/search/?dataset=valeursfoncieres-2020&rows=100&refine.nom_commune=${city}`;
+    if (!types[key]) {
+      types[key] = {
+        count: 0,
+        totalSurface: 0,
+      };
+    }
 
-    const res = await axios.get(dvfUrl);
+    types[key].count += 1;
+    types[key].totalSurface += bien.surface;
+  });
 
-    const records = res.data.records;
+  const result: any = {};
 
-    return records
-      .filter((r: any) => r.fields.valeur_fonciere && r.fields.surface_reelle_bati)
-      .map((r: any) => ({
-        lat: r.fields.latitude,
-        lon: r.fields.longitude,
-        prix: r.fields.valeur_fonciere,
-        surface: r.fields.surface_reelle_bati,
-        type: r.fields.type_local,
-        date: r.fields.date_mutation,
-      }))
-      .filter((p: DVFProperty) => p.lat && p.lon);
+  Object.keys(types).forEach((key) => {
+    result[key] = {
+      pourcentage: Math.round(
+        (types[key].count / dvfList.length) * 100
+      ),
+      surfaceMoyenne: Math.round(
+        types[key].totalSurface / types[key].count
+      ),
+    };
+  });
 
-  } catch (e) {
-    console.error(e);
-    return [];
-  }
+  return result;
 }
