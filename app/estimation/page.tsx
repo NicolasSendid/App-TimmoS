@@ -9,6 +9,7 @@ import { getCitiesFromZip } from "@/lib/geo";
 import { getCadastre } from "@/lib/cadastre";
 import PropertyForm from "@/components/PropertyForm";
 import { generatePDF } from "@/lib/pdf";
+import { estimatePrice } from "@/lib/estimation";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
@@ -39,43 +40,46 @@ export default function EstimationPage() {
     }
   };
 
-  const handleEstimate = async () => {
-    try {
-      const fullAddress = `${address}, ${zip} ${city}`;
+const handleEstimate = async () => {
+  try {
+    const fullAddress = `${address}, ${zip} ${city}`;
 
-      const { lat, lon } = await geocodeAddress(fullAddress);
-      setCenter([lat, lon]);
+    const { lat, lon } = await geocodeAddress(fullAddress);
+    setCenter([lat, lon]);
 
-      const dvf: DVFProperty[] = await getDVFNearby(lat, lon, type);
+    const dvf: DVFProperty[] = await getDVFNearby(lat, lon, type);
 
-      let dvfPrix = 0;
+    // 🔥 NOUVEAU MOTEUR
+    const estimation = estimatePrice(
+      { lat, lon, surface },
+      dvf
+    );
 
-      if (dvf.length) {
-        const prixM2 =
-          dvf.reduce((acc, p) => acc + p.prix / p.surface, 0) /
-          dvf.length;
-
-        dvfPrix = prixM2 * surface;
-      }
-
-      setMarkers(
-        dvf.map((p) => ({
-          lat: p.lat,
-          lon: p.lon,
-          price: p.prix,
-          surface: p.surface,
-        }))
-      );
-
-      const cadastre = await getCadastre(lat, lon);
-      setParcelles(cadastre);
-
-      setResult(Math.round(dvfPrix));
-
-    } catch {
-      alert("Erreur estimation");
+    if (!estimation) {
+      alert("Pas assez de données");
+      return;
     }
-  };
+
+    setResult(estimation.median);
+
+    setMarkers(
+      dvf.map((p) => ({
+        lat: p.lat,
+        lon: p.lon,
+        price: p.prix,
+        surface: p.surface,
+        type: p.type,
+        date: p.date,
+      }))
+    );
+
+    const cadastre = await getCadastre(lat, lon);
+    setParcelles(cadastre);
+
+  } catch {
+    alert("Erreur estimation");
+  }
+};
 
   return (
     <div style={{ maxWidth: 900, margin: "auto" }}>
@@ -107,8 +111,14 @@ export default function EstimationPage() {
       </button>
 
       {result && (
-        <>
-          <h2>{result.toLocaleString()} €</h2>
+  <>
+    <h2>Estimation</h2>
+
+    <p>Bas : {Math.round(result * 0.9).toLocaleString()} €</p>
+    <p>Médian : {result.toLocaleString()} €</p>
+    <p>Haut : {Math.round(result * 1.1).toLocaleString()} €</p>
+  </>
+)}
 
           <button
             onClick={() =>
