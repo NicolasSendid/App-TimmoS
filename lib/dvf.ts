@@ -1,47 +1,56 @@
-type DVFProperty = {
+import axios from "axios";
+
+export type DVFProperty = {
+  lat: number;
+  lon: number;
+  prix: number;
   surface: number;
+  type: string;
+  date: string;
 };
 
-function estimatePieces(surface: number): number {
-  if (surface < 30) return 1;
-  if (surface < 45) return 2;
-  if (surface < 65) return 3;
-  if (surface < 85) return 4;
-  if (surface < 110) return 5;
-  if (surface < 140) return 6;
-  return 7;
-}
+export async function getDVFNearby(
+  lat: number,
+  lon: number,
+  typeBien: string
+): Promise<DVFProperty[]> {
+  try {
+    // 1. Récupération de la ville via coordonnées
+    const geo = await axios.get(
+      `https://api-adresse.data.gouv.fr/reverse/?lon=${lon}&lat=${lat}`
+    );
 
-export function analyseSecteur(dvfList: DVFProperty[]) {
-  const types: any = {};
+    const city = geo.data.features[0]?.properties?.city;
 
-  dvfList.forEach((bien) => {
-    const pieces = estimatePieces(bien.surface);
-    const key = pieces >= 7 ? "T7+" : `T${pieces}`;
+    if (!city) return [];
 
-    if (!types[key]) {
-      types[key] = {
-        count: 0,
-        totalSurface: 0,
-      };
-    }
+    // 2. Appel DVF
+    const res = await axios.get(
+      `https://public.opendatasoft.com/api/records/1.0/search/?dataset=valeursfoncieres-2020&rows=100&refine.nom_commune=${city}`
+    );
 
-    types[key].count += 1;
-    types[key].totalSurface += bien.surface;
-  });
+    const records = res.data.records;
 
-  const result: any = {};
+    // 3. Formatage propre
+    return records
+      .filter(
+        (r: any) =>
+          r.fields.valeur_fonciere &&
+          r.fields.surface_reelle_bati &&
+          r.fields.latitude &&
+          r.fields.longitude
+      )
+      .map((r: any) => ({
+        lat: r.fields.latitude,
+        lon: r.fields.longitude,
+        prix: r.fields.valeur_fonciere,
+        surface: r.fields.surface_reelle_bati,
+        type: r.fields.type_local,
+        date: r.fields.date_mutation,
+      }));
 
-  Object.keys(types).forEach((key) => {
-    result[key] = {
-      pourcentage: Math.round(
-        (types[key].count / dvfList.length) * 100
-      ),
-      surfaceMoyenne: Math.round(
-        types[key].totalSurface / types[key].count
-      ),
-    };
-  });
-
-  return result;
+  } catch (error) {
+    console.error("Erreur DVF :", error);
+    return [];
+  }
 }
