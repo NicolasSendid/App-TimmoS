@@ -1,24 +1,22 @@
-import { DVFProperty } from "./dvf";
+type DVFProperty = {
+  surface: number;
+};
 
-/* ✅ Analyse prix moyen secteur */
-export function analyseSecteur(dvfList: DVFProperty[], surface: number) {
-  if (!dvfList.length) return null;
-
-  const prixM2 = dvfList.map((p) => p.prix / p.surface);
-  const moyenne =
-    prixM2.reduce((a, b) => a + b, 0) / prixM2.length;
-
-  return moyenne * surface;
+function estimatePieces(surface: number): number {
+  if (surface < 30) return 1;
+  if (surface < 45) return 2;
+  if (surface < 65) return 3;
+  if (surface < 85) return 4;
+  if (surface < 110) return 5;
+  if (surface < 140) return 6;
+  return 7;
 }
 
-/* ✅ Analyse détaillée (T1, T2...) */
-export function analyseSecteurDetail(dvfList: DVFProperty[]) {
-  if (!dvfList.length) return [];
-
+export function analyseSecteur(dvfList: DVFProperty[]) {
   const types: any = {};
 
   dvfList.forEach((bien) => {
-    const pieces = bien.pieces || 1;
+    const pieces = estimatePieces(bien.surface);
     const key = pieces >= 7 ? "T7+" : `T${pieces}`;
 
     if (!types[key]) {
@@ -28,15 +26,22 @@ export function analyseSecteurDetail(dvfList: DVFProperty[]) {
       };
     }
 
-    types[key].count++;
+    types[key].count += 1;
     types[key].totalSurface += bien.surface;
   });
 
-  const total = dvfList.length;
+  const result: any = {};
 
-  return Object.entries(types).map(([type, data]: any) => ({
-    type,
-    percentage: Math.round((data.count / total) * 100),
-    avgSurface: Math.round(data.totalSurface / data.count),
-  }));
+  Object.keys(types).forEach((key) => {
+    result[key] = {
+      pourcentage: Math.round(
+        (types[key].count / dvfList.length) * 100
+      ),
+      surfaceMoyenne: Math.round(
+        types[key].totalSurface / types[key].count
+      ),
+    };
+  });
+
+  return result;
 }
